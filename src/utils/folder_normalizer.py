@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Tuple
 
-from utils.car_brands import KNOWN_BRANDS, NORMALIZED_BRANDS
+from utils.car_brands import KNOWN_BRANDS, NORMALIZED_BRANDS, MODEL_CONSOLIDATIONS
 
 
 class CarFolderNormalizer:
@@ -150,6 +150,11 @@ class CarFolderNormalizer:
             if full_name_upper.startswith(brand + '_'):
                 # Extract model (everything after brand and underscore)
                 model = full_name[len(brand) + 1:]  # +1 for the underscore
+
+                # Apply model consolidation
+                model_upper = model.upper()
+                if model_upper in MODEL_CONSOLIDATIONS:
+                    model = MODEL_CONSOLIDATIONS[model_upper]
 
                 if brand in self.NORMALIZED_BRANDS:
                     return self.NORMALIZED_BRANDS[brand], model
