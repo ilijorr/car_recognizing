@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from dataset import CarDataModule
+from cached_dataset import CachedCarDataModule
 from model import MultiOutputCarClassifier, MultiOutputLoss
 from metrics import MultiOutputMetrics, AverageMeter
 
@@ -31,13 +32,27 @@ class CarTrainer:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Using device: {self.device}")
 
-        # Initialize data module
-        self.data_module = CarDataModule(
-            data_path=config['data_path'],
-            batch_size=config['batch_size'],
-            image_size=config['image_size'],
-            num_workers=config['num_workers']
-        )
+        # Initialize data module (use cache if available)
+        cache_file = config.get('cache_file', 'cache/dataset_cache.pkl')
+
+        if os.path.exists(cache_file):
+            print(f"🚀 Using cached dataset from {cache_file}")
+            self.data_module = CachedCarDataModule(
+                data_path=config['data_path'],
+                cache_file=cache_file,
+                batch_size=config['batch_size'],
+                image_size=config['image_size'],
+                num_workers=config['num_workers']
+            )
+        else:
+            print(f"⚠️  Cache file {cache_file} not found, using slow dataset creation...")
+            print("💡 Tip: Run 'python scripts/create_data_cache.py' to create cache for faster loading")
+            self.data_module = CarDataModule(
+                data_path=config['data_path'],
+                batch_size=config['batch_size'],
+                image_size=config['image_size'],
+                num_workers=config['num_workers']
+            )
 
         # Get class information
         class_info = self.data_module.get_class_info()
@@ -321,12 +336,15 @@ def main():
                         help='Path to config file')
     parser.add_argument('--data_path', type=str, default='data/raw',
                         help='Path to dataset')
+    parser.add_argument('--cache_file', type=str, default='cache/dataset_cache.pkl',
+                        help='Path to dataset cache file')
 
     args = parser.parse_args()
 
     # Default configuration
     config = {
         'data_path': args.data_path,
+        'cache_file': args.cache_file,
         'batch_size': 16,
         'image_size': 128,
         'num_workers': 4,

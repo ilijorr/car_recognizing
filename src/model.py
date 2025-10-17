@@ -122,7 +122,10 @@ class MultiOutputLoss(nn.Module):
     def __init__(self,
                  make_weight: float = 1.0,
                  model_weight: float = 1.0,
-                 year_weight: float = 1.0):
+                 year_weight: float = 1.0,
+                 make_class_weights: torch.Tensor = None,
+                 model_class_weights: torch.Tensor = None,
+                 year_class_weights: torch.Tensor = None):
         """
         Combined loss for multi-output classification
 
@@ -130,6 +133,9 @@ class MultiOutputLoss(nn.Module):
             make_weight: Weight for make classification loss
             model_weight: Weight for model classification loss
             year_weight: Weight for year classification loss
+            make_class_weights: Class weights for make imbalance
+            model_class_weights: Class weights for model imbalance
+            year_class_weights: Class weights for year imbalance
         """
         super(MultiOutputLoss, self).__init__()
 
@@ -137,7 +143,10 @@ class MultiOutputLoss(nn.Module):
         self.model_weight = model_weight
         self.year_weight = year_weight
 
-        self.ce_loss = nn.CrossEntropyLoss()
+        # Create separate loss functions with class weights
+        self.make_loss = nn.CrossEntropyLoss(weight=make_class_weights)
+        self.model_loss = nn.CrossEntropyLoss(weight=model_class_weights)
+        self.year_loss = nn.CrossEntropyLoss(weight=year_class_weights)
 
     def forward(self,
                 predictions: Dict[str, torch.Tensor],
@@ -152,9 +161,9 @@ class MultiOutputLoss(nn.Module):
         Returns:
             Dictionary with individual and total losses
         """
-        make_loss = self.ce_loss(predictions['make'], targets['make'])
-        model_loss = self.ce_loss(predictions['model'], targets['model'])
-        year_loss = self.ce_loss(predictions['year'], targets['year'])
+        make_loss = self.make_loss(predictions['make'], targets['make'])
+        model_loss = self.model_loss(predictions['model'], targets['model'])
+        year_loss = self.year_loss(predictions['year'], targets['year'])
 
         total_loss = (self.make_weight * make_loss +
                       self.model_weight * model_loss +
@@ -166,6 +175,37 @@ class MultiOutputLoss(nn.Module):
             'model_loss': model_loss,
             'year_loss': year_loss
         }
+
+
+def calculate_class_weights(targets: list, num_classes: int) -> torch.Tensor:
+    """
+    Calculate class weights for imbalanced datasets using sklearn
+
+    Args:
+        targets: List of target labels
+        num_classes: Total number of classes
+
+    Returns:
+        Class weights tensor
+    """
+    from sklearn.utils.class_weight import compute_class_weight
+    import numpy as np
+
+    # Get unique classes and compute weights
+    unique_classes = np.unique(targets)
+    class_weights = compute_class_weight(
+        'balanced',
+        classes=unique_classes,
+        y=targets
+    )
+
+    # Create weight tensor for all classes (in case some classes are missing)
+    weights = torch.ones(num_classes, dtype=torch.float32)
+    for i, class_idx in enumerate(unique_classes):
+        if class_idx < num_classes:
+            weights[class_idx] = class_weights[i]
+
+    return weights
 
 
 def create_model(num_makes: int,

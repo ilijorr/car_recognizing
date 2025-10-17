@@ -172,15 +172,9 @@ class CarDataModule:
         self.num_models = full_dataset.num_models
         self.num_years = full_dataset.num_years
 
-        # Split data: 64% train, 16% val, 20% test
-        self.train_samples, test_samples = train_test_split(
-            full_dataset.samples, test_size=0.2, random_state=42,
-            stratify=[s['make'] for s in full_dataset.samples]
-        )
-
-        self.train_samples, self.val_samples = train_test_split(
-            self.train_samples, test_size=0.2, random_state=42,
-            stratify=[s['make'] for s in self.train_samples]
+        # Split data by make-model to prevent leakage
+        self.train_samples, self.val_samples, test_samples = self._split_by_make_model(
+            full_dataset.samples
         )
 
         print(f"Data splits: Train={len(self.train_samples)}, "
@@ -190,6 +184,85 @@ class CarDataModule:
         self.train_dataset = self._create_split_dataset('train', self.train_samples)
         self.val_dataset = self._create_split_dataset('val', self.val_samples)
         self.test_dataset = self._create_split_dataset('test', test_samples)
+
+    def _split_by_make_model(self, all_samples):
+        """Split data by make-model combinations to prevent leakage"""
+
+        # Group samples by make-model combination
+        make_model_groups = {}
+        for sample in all_samples:
+            make_model_key = f"{sample['make']}_{sample['model']}"
+            if make_model_key not in make_model_groups:
+                make_model_groups[make_model_key] = []
+            make_model_groups[make_model_key].append(sample)
+
+        # Get unique make-model combinations and their makes for stratification
+        combinations = list(make_model_groups.keys())
+        combination_makes = [combo.split('_')[0] for combo in combinations]
+
+        print(f"Found {len(combinations)} unique make-model combinations")
+
+        # Check if stratification is possible for makes
+        from collections import Counter
+        make_counts = Counter(combination_makes)
+        min_make_count = min(make_counts.values())
+
+        # Only stratify if all makes have at least 2 samples
+        stratify_makes = combination_makes if min_make_count >= 2 else None
+
+        if stratify_makes is None:
+            print("⚠️  Some makes have too few samples for stratification - using random split")
+        else:
+            print(f"✅ Using make stratification ({min_make_count} min samples per make)")
+
+        # Split combinations (not individual samples)
+        train_combos, test_combos = train_test_split(
+            combinations,
+            test_size=0.2,
+            random_state=42,
+            stratify=stratify_makes
+        )
+
+        # Further split train combinations into train/val
+        train_combo_makes = [combo.split('_')[0] for combo in train_combos]
+        train_make_counts = Counter(train_combo_makes)
+        min_train_make_count = min(train_make_counts.values())
+
+        stratify_train_makes = train_combo_makes if min_train_make_count >= 2 else None
+
+        train_combos, val_combos = train_test_split(
+            train_combos,
+            test_size=0.2,  # 20% of remaining 80% = 16% of total
+            random_state=42,
+            stratify=stratify_train_makes
+        )
+
+        # Convert combination splits to sample lists
+        train_samples = []
+        val_samples = []
+        test_samples = []
+
+        for combo in train_combos:
+            train_samples.extend(make_model_groups[combo])
+
+        for combo in val_combos:
+            val_samples.extend(make_model_groups[combo])
+
+        for combo in test_combos:
+            test_samples.extend(make_model_groups[combo])
+
+        # Verify no leakage
+        train_combos_set = set(train_combos)
+        val_combos_set = set(val_combos)
+        test_combos_set = set(test_combos)
+
+        assert len(train_combos_set & val_combos_set) == 0, "Train-Val leakage detected!"
+        assert len(train_combos_set & test_combos_set) == 0, "Train-Test leakage detected!"
+        assert len(val_combos_set & test_combos_set) == 0, "Val-Test leakage detected!"
+
+        print("✅ No data leakage detected - make-model combinations are properly separated")
+
+        return train_samples, val_samples, test_samples
 
     def _create_split_dataset(self, split: str, samples: List[Dict]) -> CarDataset:
         """Create dataset for specific split with pre-filtered samples"""

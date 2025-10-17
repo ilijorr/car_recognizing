@@ -60,10 +60,6 @@ class MultiOutputMetrics:
         metrics['model_f1'] = f1_score(self.model_targets, self.model_preds, average='weighted')
         metrics['year_f1'] = f1_score(self.year_targets, self.year_preds, average='weighted')
 
-        # RMSE for year (treating as regression-like metric)
-        year_rmse = np.sqrt(np.mean((np.array(self.year_targets) - np.array(self.year_preds)) ** 2))
-        metrics['year_rmse'] = year_rmse
-
         # Exact Match Ratio (EMR) - all outputs must be correct
         exact_matches = 0
         total_samples = len(self.make_targets)
@@ -181,4 +177,3 @@ class AverageMeter:
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-

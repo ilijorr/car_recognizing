@@ -143,11 +143,17 @@ class CarFolderNormalizer:
     def _parse_make_model(self, full_name: str) -> Tuple[str, str]:
         """Returns the car make and model"""
 
+        # Convert to uppercase for consistent matching
+        full_name_upper = full_name.upper()
+
         for brand in sorted(self.KNOWN_BRANDS, key=len, reverse=True):
-            if full_name.startswith(brand):
+            if full_name_upper.startswith(brand + '_'):
+                # Extract model (everything after brand and underscore)
+                model = full_name[len(brand) + 1:]  # +1 for the underscore
+
                 if brand in self.NORMALIZED_BRANDS:
-                    return self.NORMALIZED_BRANDS[brand], full_name.removeprefix(brand + '_')
+                    return self.NORMALIZED_BRANDS[brand], model
                 else:
-                    return brand, full_name.removeprefix(brand + '_')
+                    return brand, model
 
         return "UNKNOWN", "UNKNOWN"
