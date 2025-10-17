@@ -128,7 +128,17 @@ class CarFolderNormalizer:
                 f.write(f"{status}: {count}\n")
 
     def _parse_year(self, year_str: str) -> str:
-        return year_str if len(year_str) <= 4 else f"{year_str[:4]}-{year_str[4:]}"
+        """Parse year and convert to decade ranges"""
+        # Take first 3 digits and add '0s' for decade
+        # Examples: "1968" -> "1960s", "2022Present" -> "2020s", "20002010" -> "2000s"
+        try:
+            first_three_digits = year_str[:3]
+            if first_three_digits.isdigit():
+                return first_three_digits + "0s"
+            else:
+                return "Unknown"
+        except:
+            return "Unknown"
 
     def _parse_make_model(self, full_name: str) -> Tuple[str, str]:
         """Returns the car make and model"""
