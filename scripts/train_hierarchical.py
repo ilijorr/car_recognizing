@@ -160,7 +160,8 @@ class HierarchicalTrainer:
                 stage_targets['make'] = targets['make']
             if stage == 'model' or stage == 'all':
                 if 'model' in predictions:
-                    stage_targets['model'] = targets['model']
+                    # For model stage, we need to remap targets to make-specific indices
+                    stage_targets['model'] = self._remap_model_targets(targets['model'], make_names)
             if stage == 'year' or stage == 'all':
                 stage_targets['year'] = targets['year']
 
@@ -191,6 +192,26 @@ class HierarchicalTrainer:
 
         return final_metrics
 
+    def _remap_model_targets(self, global_model_targets, make_names):
+        """Remap global model targets to make-specific model indices"""
+        batch_size = global_model_targets.size(0)
+        remapped_targets = torch.zeros_like(global_model_targets)
+
+        for i, make_name in enumerate(make_names):
+            if make_name in self.make_to_models:
+                # Get the global model name
+                global_model_idx = global_model_targets[i].item()
+                global_model_name = self.data_module.model_encoder.inverse_transform([global_model_idx])[0]
+
+                # Find the make-specific index
+                make_models = self.make_to_models[make_name]
+                if global_model_name in make_models:
+                    make_specific_idx = make_models.index(global_model_name)
+                    remapped_targets[i] = make_specific_idx
+                # If model not found in make, leave as 0 (will be ignored in loss)
+
+        return remapped_targets
+
     def _validate_epoch(self, epoch, stage):
         """Validate for one epoch"""
         self.model.eval()
@@ -220,7 +241,8 @@ class HierarchicalTrainer:
                     stage_targets['make'] = targets['make']
                 if stage == 'model' or stage == 'all':
                     if 'model' in predictions:
-                        stage_targets['model'] = targets['model']
+                        # For model stage, we need to remap targets to make-specific indices
+                        stage_targets['model'] = self._remap_model_targets(targets['model'], make_names)
                 if stage == 'year' or stage == 'all':
                     stage_targets['year'] = targets['year']
 

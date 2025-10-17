@@ -60,20 +60,24 @@ class ModelClassifier(nn.Module):
         # Combine features
         combined = torch.cat([features, make_emb], dim=1)  # [batch_size, 2176]
 
+        # Find max number of models across all makes for consistent output size
+        max_models = max(len(models) for models in self.make_to_models.values())
+        batch_size = x.size(0)
+
+        # Create output tensor with consistent size
+        output = torch.zeros(batch_size, max_models, device=x.device)
+
         # Apply appropriate classifier for each sample based on its make
-        outputs = []
         for i, make_name in enumerate(make_names):
             if make_name in self.model_classifiers:
                 classifier = self.model_classifiers[make_name]
-                output = classifier(combined[i:i+1])
-                outputs.append(output)
-            else:
-                # Handle unknown makes - return zeros
-                num_models = max(len(models) for models in self.make_to_models.values())
-                output = torch.zeros(1, num_models, device=x.device)
-                outputs.append(output)
+                single_output = classifier(combined[i:i+1])  # [1, num_models_for_make]
+                # Copy to the appropriate slice of the output tensor
+                num_models_for_make = single_output.size(1)
+                output[i, :num_models_for_make] = single_output[0]
+            # For unknown makes, leave as zeros (already initialized)
 
-        return torch.cat(outputs, dim=0)
+        return output
 
 
 class YearClassifier(nn.Module):
