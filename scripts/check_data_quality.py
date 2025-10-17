@@ -61,7 +61,7 @@ def check_cache_quality(cache_file: str = "cache/dataset_cache.pkl"):
             missing_files.append(image_path)
 
         # Check for weird characters
-        if any(char in image_path for char in ['?', '*', '<', '>', '|']):
+        if any(char in str(image_path) for char in ['?', '*', '<', '>', '|']):
             corrupt_paths.append(image_path)
 
     print(f"   Missing files (first 1000): {len(missing_files)}")
