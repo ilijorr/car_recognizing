@@ -24,7 +24,6 @@ class CarFolderNormalizer:
                     "year", depending on the available data
         """
 
-        directory_name = directory_name.strip().replace('__', '_')
         year_raw = directory_name.split('_')[-1]
         make_model_raw = directory_name.removesuffix('_' + year_raw)
 
@@ -42,6 +41,14 @@ class CarFolderNormalizer:
             Returns:
                 normalized_name (str)
         """
+
+        directory_name = directory_name.strip().replace('__', '_')
+
+        if len(directory_name) >= 4 and directory_name[:4].isdigit():
+            if len(directory_name) >= 5 and directory_name[4] != '_':
+                directory_name = directory_name[:4] + '_' + directory_name[4:]
+            elif len(directory_name) == 4:
+                directory_name = directory_name + '_'
 
         segments = directory_name.strip().split('_')
 
