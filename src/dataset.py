@@ -173,17 +173,17 @@ class CarDataModule:
         self.num_years = full_dataset.num_years
 
         # Split data by make-model to prevent leakage
-        self.train_samples, self.val_samples, test_samples = self._split_by_make_model(
+        self.train_samples, self.val_samples, self.test_samples = self._split_by_make_model(
             full_dataset.samples
         )
 
         print(f"Data splits: Train={len(self.train_samples)}, "
-              f"Val={len(self.val_samples)}, Test={len(test_samples)}")
+              f"Val={len(self.val_samples)}, Test={len(self.test_samples)}")
 
         # Create datasets for each split
         self.train_dataset = self._create_split_dataset('train', self.train_samples)
         self.val_dataset = self._create_split_dataset('val', self.val_samples)
-        self.test_dataset = self._create_split_dataset('test', test_samples)
+        self.test_dataset = self._create_split_dataset('test', self.test_samples)
 
     def _split_by_make_model(self, all_samples):
         """Split data by make-model combinations to prevent leakage"""
