@@ -352,29 +352,44 @@ class HierarchicalTrainer:
         """Plot training history"""
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
 
-        # Loss
+        # Loss (always available)
         axes[0, 0].plot(self.train_history['loss'], label='Train')
         axes[0, 0].plot(self.val_history['loss'], label='Validation')
         axes[0, 0].set_title('Loss')
         axes[0, 0].legend()
 
-        # EMR
-        axes[0, 1].plot(self.train_history['emr'], label='Train')
-        axes[0, 1].plot(self.val_history['emr'], label='Validation')
-        axes[0, 1].set_title('Exact Match Ratio (EMR)')
-        axes[0, 1].legend()
+        # EMR (only if data exists)
+        if self.train_history['emr'] and self.val_history['emr']:
+            axes[0, 1].plot(self.train_history['emr'], label='Train')
+            axes[0, 1].plot(self.val_history['emr'], label='Validation')
+            axes[0, 1].set_title('Exact Match Ratio (EMR)')
+            axes[0, 1].legend()
+        else:
+            axes[0, 1].text(0.5, 0.5, 'EMR data only available\nfor stage="all" training',
+                           ha='center', va='center', transform=axes[0, 1].transAxes)
+            axes[0, 1].set_title('EMR (No Data)')
 
-        # Make Accuracy
-        axes[1, 0].plot(self.train_history['make_acc'], label='Train')
-        axes[1, 0].plot(self.val_history['make_acc'], label='Validation')
-        axes[1, 0].set_title('Make Accuracy')
-        axes[1, 0].legend()
+        # Make Accuracy (only if data exists)
+        if self.train_history['make_acc'] and self.val_history['make_acc']:
+            axes[1, 0].plot(self.train_history['make_acc'], label='Train')
+            axes[1, 0].plot(self.val_history['make_acc'], label='Validation')
+            axes[1, 0].set_title('Make Accuracy')
+            axes[1, 0].legend()
+        else:
+            axes[1, 0].text(0.5, 0.5, 'Make accuracy data only\navailable for stage="all"',
+                           ha='center', va='center', transform=axes[1, 0].transAxes)
+            axes[1, 0].set_title('Make Accuracy (No Data)')
 
-        # Model Accuracy
-        axes[1, 1].plot(self.train_history['model_acc'], label='Train')
-        axes[1, 1].plot(self.val_history['model_acc'], label='Validation')
-        axes[1, 1].set_title('Model Accuracy')
-        axes[1, 1].legend()
+        # Model Accuracy (only if data exists)
+        if self.train_history['model_acc'] and self.val_history['model_acc']:
+            axes[1, 1].plot(self.train_history['model_acc'], label='Train')
+            axes[1, 1].plot(self.val_history['model_acc'], label='Validation')
+            axes[1, 1].set_title('Model Accuracy')
+            axes[1, 1].legend()
+        else:
+            axes[1, 1].text(0.5, 0.5, 'Model accuracy data only\navailable for stage="all"',
+                           ha='center', va='center', transform=axes[1, 1].transAxes)
+            axes[1, 1].set_title('Model Accuracy (No Data)')
 
         plt.tight_layout()
 
@@ -392,7 +407,11 @@ class HierarchicalTrainer:
                 'config': self.config,
                 'class_info': self.data_module.get_class_info(),
                 'make_to_models': self.make_to_models,
-                'best_val_emr': self.best_val_emr
+                'best_val_emr': self.best_val_emr,
+                # Save encoders for fast inference
+                'make_encoder': self.data_module.make_encoder,
+                'model_encoder': self.data_module.model_encoder,
+                'year_encoder': self.data_module.year_encoder
             }, filepath)
             print(f"Model saved to {filepath}")
 
