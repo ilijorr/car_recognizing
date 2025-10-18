@@ -195,20 +195,36 @@ class HierarchicalTrainer:
     def _remap_model_targets(self, global_model_targets, make_names):
         """Remap global model targets to make-specific model indices"""
         batch_size = global_model_targets.size(0)
-        remapped_targets = torch.zeros_like(global_model_targets)
+        remapped_targets = torch.full_like(global_model_targets, -1)  # Use -1 as invalid marker
 
         for i, make_name in enumerate(make_names):
             if make_name in self.make_to_models:
                 # Get the global model name
                 global_model_idx = global_model_targets[i].item()
-                global_model_name = self.data_module.model_encoder.inverse_transform([global_model_idx])[0]
+                try:
+                    global_model_name = self.data_module.model_encoder.inverse_transform([global_model_idx])[0]
 
-                # Find the make-specific index
-                make_models = self.make_to_models[make_name]
-                if global_model_name in make_models:
-                    make_specific_idx = make_models.index(global_model_name)
-                    remapped_targets[i] = make_specific_idx
-                # If model not found in make, leave as 0 (will be ignored in loss)
+                    # Find the make-specific index
+                    make_models = self.make_to_models[make_name]
+                    if global_model_name in make_models:
+                        make_specific_idx = make_models.index(global_model_name)
+                        # Double check - this should always be true, but being safe
+                        if 0 <= make_specific_idx < len(make_models):
+                            remapped_targets[i] = make_specific_idx
+                        else:
+                            print(f"ERROR: Index {make_specific_idx} out of bounds for {make_name} ({len(make_models)} models)")
+                            remapped_targets[i] = -1  # Mark as invalid
+                    else:
+                        # Model not found in this make - this indicates data inconsistency
+                        print(f"ERROR: Model {global_model_name} not found in {make_name} models")
+                        print(f"Available models for {make_name}: {make_models[:5]}...")  # Show first 5
+                        remapped_targets[i] = -1  # Mark as invalid
+                except Exception as e:
+                    print(f"ERROR: Exception remapping model target {global_model_idx}: {e}")
+                    remapped_targets[i] = -1  # Mark as invalid
+            else:
+                print(f"ERROR: Make {make_name} not found in make_to_models mapping")
+                remapped_targets[i] = -1  # Mark as invalid
 
         return remapped_targets
 
@@ -307,9 +323,16 @@ class HierarchicalTrainer:
 
                 # Forward pass
                 predictions = self.model(images, targets['make'], make_names, stage='all')
-                loss_dict = self.criterion(predictions, targets)
+
+                # Remap model targets for hierarchical loss computation
+                test_targets = targets.copy()
+                if 'model' in predictions:
+                    test_targets['model'] = self._remap_model_targets(targets['model'], make_names)
+
+                loss_dict = self.criterion(predictions, test_targets)
 
                 loss_meter.update(loss_dict['total_loss'].item(), images.size(0))
+                # Use original targets for metrics computation (not remapped)
                 metrics.update(predictions, targets)
 
         test_metrics = metrics.compute()

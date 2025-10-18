@@ -223,7 +223,7 @@ class HierarchicalLoss(nn.Module):
         self.make_weight = make_weight
         self.model_weight = model_weight
         self.year_weight = year_weight
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
     def forward(self, predictions: Dict[str, torch.Tensor], targets: Dict[str, torch.Tensor]):
         """
