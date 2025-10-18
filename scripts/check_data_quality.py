@@ -43,6 +43,12 @@ def check_cache_quality(cache_file: str = "cache/dataset_cache.pkl"):
     print(f"📊 Total samples: {len(all_samples):,}")
     print(f"📊 Classes: {len(make_encoder.classes_)} makes, {len(model_encoder.classes_)} models, {len(year_encoder.classes_)} years")
 
+    # Show unique counts
+    unique_makes = len(set(s['make'] for s in all_samples))
+    unique_models = len(set(s['model'] for s in all_samples))
+    unique_years = len(set(s['year'] for s in all_samples))
+    print(f"📊 Unique values: {unique_makes} makes, {unique_models} models, {unique_years} years")
+
     # Check for data quality issues
     print("\n" + "="*60)
     print("🔍 DATA QUALITY CHECKS")

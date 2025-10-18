@@ -9,7 +9,7 @@ from collections import Counter
 # Add src to path so we can import our modules
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-def list_all_models(cache_file: str = "cache/dataset_cache.pkl"):
+def list_all_models(cache_file: str = "cache_consolidated/dataset_cache.pkl"):
     """
     List all unique models in the dataset with their sample counts
     """
@@ -36,18 +36,12 @@ def list_all_models(cache_file: str = "cache/dataset_cache.pkl"):
     print(f"\n📊 Found {len(model_counts)} unique models:")
     print("=" * 80)
 
-    # Sort by count (descending) then by name
-    for model, count in sorted(model_counts.items(), key=lambda x: (-x[1], x[0])):
+    # Sort alphabetically by model name
+    for model, count in sorted(model_counts.items(), key=lambda x: x[0]):
         print(f"{model:<30} : {count:>6} samples")
 
     print("=" * 80)
     print(f"Total models: {len(model_counts)}")
-
-    # Show models with very few samples
-    few_samples = {model: count for model, count in model_counts.items() if count < 10}
-    print(f"\nModels with <10 samples ({len(few_samples)}):")
-    for model, count in sorted(few_samples.items(), key=lambda x: x[1]):
-        print(f"  {model:<30} : {count} samples")
 
 if __name__ == "__main__":
     list_all_models()
