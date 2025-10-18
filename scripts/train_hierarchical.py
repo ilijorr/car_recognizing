@@ -325,6 +325,42 @@ class HierarchicalTrainer:
 
         return test_metrics
 
+    def plot_training_history(self, save_path=None):
+        """Plot training history"""
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+
+        # Loss
+        axes[0, 0].plot(self.train_history['loss'], label='Train')
+        axes[0, 0].plot(self.val_history['loss'], label='Validation')
+        axes[0, 0].set_title('Loss')
+        axes[0, 0].legend()
+
+        # EMR
+        axes[0, 1].plot(self.train_history['emr'], label='Train')
+        axes[0, 1].plot(self.val_history['emr'], label='Validation')
+        axes[0, 1].set_title('Exact Match Ratio (EMR)')
+        axes[0, 1].legend()
+
+        # Make Accuracy
+        axes[1, 0].plot(self.train_history['make_acc'], label='Train')
+        axes[1, 0].plot(self.val_history['make_acc'], label='Validation')
+        axes[1, 0].set_title('Make Accuracy')
+        axes[1, 0].legend()
+
+        # Model Accuracy
+        axes[1, 1].plot(self.train_history['model_acc'], label='Train')
+        axes[1, 1].plot(self.val_history['model_acc'], label='Validation')
+        axes[1, 1].set_title('Model Accuracy')
+        axes[1, 1].legend()
+
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path)
+            print(f"Training plots saved to {save_path}")
+
+        plt.show()
+
     def save_model(self, filepath):
         """Save the best model"""
         if self.best_model_state is not None:
@@ -409,12 +445,22 @@ def main():
     test_metrics = trainer.test()
 
     # Save results
-    os.makedirs('results', exist_ok=True)
-    trainer.save_model('results/hierarchical_model.pth')
+    project_root = Path(__file__).parent.parent
+    results_dir = project_root / 'results'
+    results_dir.mkdir(exist_ok=True)
+
+    # Save model
+    model_path = results_dir / 'hierarchical_model.pth'
+    trainer.save_model(str(model_path))
 
     # Save test results
-    with open('results/hierarchical_test_results.json', 'w') as f:
+    results_file = results_dir / 'hierarchical_test_results.json'
+    with open(results_file, 'w') as f:
         json.dump(test_metrics, f, indent=2)
+
+    # Plot and save training history
+    plot_path = results_dir / 'hierarchical_training_history.png'
+    trainer.plot_training_history(str(plot_path))
 
     print("Hierarchical training completed!")
 
