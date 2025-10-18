@@ -29,7 +29,7 @@ class HierarchicalCarInference:
 
         # Load checkpoint
         print(f"Loading model from {model_path}...")
-        self.checkpoint = torch.load(model_path, map_location=self.device)
+        self.checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
 
         # Try to load encoders from checkpoint first (FAST!)
         if all(key in self.checkpoint for key in ['make_encoder', 'model_encoder', 'year_encoder']):
